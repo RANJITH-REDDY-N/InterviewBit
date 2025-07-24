@@ -1,8 +1,8 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import { 
   Menu, X, Search, Moon, Sun, Home, Code2, Database, Cloud, 
   Globe, Settings, GitBranch, BookOpen, ChevronRight, Star,
-  Bookmark, Share2, ChevronDown, ChevronUp, Timer, Target,
+  Share2, ChevronDown, ChevronUp, Timer, Target,
   CheckCircle2, Circle, Brain, Layers, Server, Shield,
   Cpu, Package, Wrench, BarChart3, Coffee, Zap, Box,
   Network, Lock, FileJson, Terminal, Activity, Gauge,
@@ -10,32 +10,26 @@ import {
   TestTube, MessageSquare, Archive, GitCommit, Bug,
   LoaderCircle, ArrowLeft, ArrowRight, Filter, TrendingUp,
   Users, Laptop, Lightbulb, Eye, Code, Play, Copy,
-  Check, BookMarked, Clock, Award, Flame, Calendar,
-  Hash, Triangle, Link, Palette
+  Check, Clock, Award, Flame, Calendar,
+  Hash, Triangle, Link, Palette, HelpCircle, FileText
 } from 'lucide-react';
-import './index.css';
-import { techContent } from './tech';
+import './App.css';
 
-// Custom icons
-const HelpCircle = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <circle cx="12" cy="12" r="10"></circle>
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-  </svg>
-);
+// Import tech content
+import { javaContent } from './tech/languages/java';
+import { sqlContent } from './tech/languages/sql';
+import { jsonContent } from './tech/languages/json';
+import { xmlContent } from './tech/languages/xml';
 
+// Map tech content by ID
+const techContentMap = {
+  java: javaContent,
+  sql: sqlContent,
+  json: jsonContent,
+  xml: xmlContent
+};
+
+// Custom Cable icon
 const Cable = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -67,16 +61,8 @@ const useTheme = () => {
   return context;
 };
 
-// Progress Context
-const ProgressContext = createContext();
-const useProgress = () => {
-  const context = useContext(ProgressContext);
-  if (!context) throw new Error('useProgress must be used within ProgressProvider');
-  return context;
-};
-
 // Data Structure - Matching your exact requirements
-export const categories = {
+const categories = {
   languages: {
     name: "Languages",
     icon: Code2,
@@ -221,17 +207,75 @@ export const categories = {
   }
 };
 
+// Main App Component
+const App = () => {
+  const [darkMode, setDarkMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentView, setCurrentView] = useState('home');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedTech, setSelectedTech] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const toggleTheme = () => setDarkMode(!darkMode);
+
+  const navigateTo = (view, category = null, tech = null) => {
+    setCurrentView(view);
+    setSelectedCategory(category);
+    setSelectedTech(tech);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
+      <div className={`app-container ${darkMode ? 'dark' : 'light'}`}>
+        <Header 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+        />
+
+        <div className="main-layout">
+          <Sidebar 
+            isOpen={sidebarOpen}
+            currentView={currentView}
+            selectedCategory={selectedCategory}
+            navigateTo={navigateTo}
+          />
+
+          <main className={`main-content ${sidebarOpen ? 'with-sidebar' : ''}`}>
+            <div className="content-wrapper">
+              <Breadcrumb 
+                currentView={currentView}
+                selectedCategory={selectedCategory}
+                selectedTech={selectedTech}
+                navigateTo={navigateTo}
+              />
+
+              {currentView === 'home' && <HomeDashboard navigateTo={navigateTo} />}
+              {currentView === 'category' && selectedCategory && (
+                <CategoryView 
+                  category={selectedCategory} 
+                  navigateTo={navigateTo}
+                />
+              )}
+              {currentView === 'technology' && selectedTech && (
+                <TechnologyView 
+                  category={selectedCategory}
+                  technology={selectedTech}
+                  techContent={techContentMap[selectedTech]}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+    </ThemeContext.Provider>
+  );
+};
+
 // Header Component
 const Header = ({ searchQuery, setSearchQuery, sidebarOpen, setSidebarOpen }) => {
   const { darkMode, toggleTheme } = useTheme();
-  const { progress } = useProgress();
-  
-  const totalQuestions = Object.values(categories).reduce((acc, cat) => 
-    acc + Object.values(cat.items).reduce((sum, item) => sum + item.questions, 0), 0
-  );
-  
-  const completedQuestions = Object.values(progress).reduce((acc, val) => acc + val, 0);
-  const progressPercentage = Math.round((completedQuestions / totalQuestions) * 100);
 
   return (
     <header className="header">
@@ -258,16 +302,6 @@ const Header = ({ searchQuery, setSearchQuery, sidebarOpen, setSidebarOpen }) =>
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
-
-          <div className="progress-bar-container">
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-            <span className="progress-text">{progressPercentage}%</span>
           </div>
 
           <button
@@ -349,54 +383,15 @@ const Breadcrumb = ({ currentView, selectedCategory, selectedTech, navigateTo })
 
 // HomeDashboard Component
 const HomeDashboard = ({ navigateTo }) => {
-  const { darkMode } = useTheme();
-  const { progress } = useProgress();
-  
-  const stats = {
-    totalQuestions: Object.values(categories).reduce((acc, cat) => 
-      acc + Object.values(cat.items).reduce((sum, item) => sum + item.questions, 0), 0
-    ),
-    completedQuestions: Object.values(progress).reduce((acc, val) => acc + val, 0),
-    bookmarkedQuestions: 12,
-    studyStreak: 5
-  };
+  const totalQuestions = Object.values(categories).reduce((acc, cat) => 
+    acc + Object.values(cat.items).reduce((sum, item) => sum + item.questions, 0), 0
+  );
 
   return (
     <div className="dashboard">
-      <div className="welcome-section">
-        <h2>Welcome to Tech Interview Guide</h2>
-        <p>Master technical interviews with our comprehensive guide covering all major technologies and concepts.</p>
-        
-        <div className="stats-grid">
-          <div className="stat-card">
-            <BookOpen className="stat-icon blue" size={24} />
-            <div className="stat-content">
-              <span className="stat-value">{stats.totalQuestions}</span>
-              <span className="stat-label">Total Questions</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <CheckCircle2 className="stat-icon green" size={24} />
-            <div className="stat-content">
-              <span className="stat-value">{stats.completedQuestions}</span>
-              <span className="stat-label">Completed</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <Bookmark className="stat-icon yellow" size={24} />
-            <div className="stat-content">
-              <span className="stat-value">{stats.bookmarkedQuestions}</span>
-              <span className="stat-label">Bookmarked</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <Flame className="stat-icon red" size={24} />
-            <div className="stat-content">
-              <span className="stat-value">{stats.studyStreak} days</span>
-              <span className="stat-label">Study Streak</span>
-            </div>
-          </div>
-        </div>
+      <div className="dashboard-header">
+        <h2>Technical Interview Preparation Guide</h2>
+        <p>Master your technical interviews with comprehensive Q&A coverage across {totalQuestions}+ questions</p>
       </div>
 
       <div className="categories-section">
@@ -405,10 +400,6 @@ const HomeDashboard = ({ navigateTo }) => {
           {Object.entries(categories).map(([key, category]) => {
             const Icon = category.icon;
             const categoryQuestions = Object.values(category.items).reduce((sum, item) => sum + item.questions, 0);
-            const categoryProgress = Object.entries(category.items).reduce((sum, [itemKey]) => 
-              sum + (progress[`${key}_${itemKey}`] || 0), 0
-            );
-            const progressPercentage = Math.round((categoryProgress / categoryQuestions) * 100);
             
             return (
               <button
@@ -421,33 +412,12 @@ const HomeDashboard = ({ navigateTo }) => {
                 </div>
                 <h4>{category.name}</h4>
                 <p>{category.description}</p>
-                
-                <div className="category-progress">
-                  <div className="progress-info">
-                    <span>Progress</span>
-                    <span>{progressPercentage}%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
-                  </div>
-                  <span className="progress-details">
-                    {categoryProgress} / {categoryQuestions} questions
-                  </span>
+                <div className="category-footer">
+                  <span className="question-count">{categoryQuestions} questions</span>
                 </div>
               </button>
             );
           })}
-        </div>
-      </div>
-
-      <div className="recent-section">
-        <h3>Recently Viewed</h3>
-        <div className="empty-state">
-          <Clock size={48} />
-          <p>No recent activity</p>
         </div>
       </div>
     </div>
@@ -456,8 +426,6 @@ const HomeDashboard = ({ navigateTo }) => {
 
 // CategoryView Component
 const CategoryView = ({ category, navigateTo }) => {
-  const { darkMode } = useTheme();
-  const { progress } = useProgress();
   const categoryData = categories[category];
   
   return (
@@ -489,8 +457,6 @@ const CategoryView = ({ category, navigateTo }) => {
         <div className="tech-grid">
           {Object.entries(categoryData.items).map(([key, tech]) => {
             const Icon = tech.icon;
-            const completed = progress[`${category}_${key}`] || 0;
-            const progressPercentage = Math.round((completed / tech.questions) * 100);
             
             return (
               <button
@@ -514,26 +480,6 @@ const CategoryView = ({ category, navigateTo }) => {
                     {tech.questions} questions
                   </span>
                 </div>
-
-                <div className="tech-progress">
-                  <div className="progress-info">
-                    <span>Progress</span>
-                    <span>{completed}/{tech.questions}</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                {progressPercentage === 100 && (
-                  <div className="completed-badge">
-                    <Award size={16} />
-                    <span>Completed!</span>
-                  </div>
-                )}
               </button>
             );
           })}
@@ -543,26 +489,23 @@ const CategoryView = ({ category, navigateTo }) => {
   );
 };
 
-// TechnologyView Component (simplified for space)
-const TechnologyView = ({ technology }) => {
-  const { darkMode } = useTheme();
+// TechnologyView Component
+const TechnologyView = ({ category, technology, techContent }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  
-  const techData = technology;
+  const categoryData = categories[category];
+  const techData = categoryData.items[technology];
   
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Eye },
-    { id: 'questions', label: 'Interview Questions', icon: HelpCircle },
-    { id: 'examples', label: 'Code Examples', icon: Code },
-    { id: 'visual', label: 'Visual Learning', icon: Lightbulb },
-    { id: 'practice', label: 'Practice', icon: Play },
-    { id: 'resources', label: 'Resources', icon: BookOpen }
+    { id: 'questions', label: 'Interview Q&A', icon: HelpCircle },
+    { id: 'resources', label: 'Resources', icon: BookOpen },
+    { id: 'quiz', label: 'Quiz', icon: Brain }
   ];
 
   return (
     <div className="technology-view">
-      <div className="tech-header">
-        <div className={`tech-icon-large ${techData.color}`}>
+      <div className="tech-header-card">
+        <div className={`tech-icon-large ${categoryData.color}`}>
           <techData.icon size={48} />
         </div>
         <div>
@@ -590,41 +533,128 @@ const TechnologyView = ({ technology }) => {
       </div>
 
       <div className="tab-content">
-        {activeTab === 'overview' && (
+        {activeTab === 'overview' && techContent?.overview && (
           <div className="overview-content">
-            <section>
-              <h3>What is {techData.name}?</h3>
-              <p>
-                {techData.name} is a powerful technology used in modern software development. 
-                This comprehensive guide will help you master all the essential concepts and prepare for technical interviews.
-              </p>
+            <section className="overview-section">
+              <h3>{techContent.overview.introduction.title}</h3>
+              <p>{techContent.overview.introduction.content}</p>
+              {techContent.overview.introduction.keyPoints && (
+                <ul className="key-points">
+                  {techContent.overview.introduction.keyPoints.map((point, idx) => (
+                    <li key={idx}>
+                      <CheckCircle2 className="point-icon" size={20} />
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
-            <section>
-              <h3>Why is it important?</h3>
-              <ul>
-                <li>
-                  <CheckCircle2 className="green" size={20} />
-                  <span>Widely used in enterprise applications</span>
-                </li>
-                <li>
-                  <CheckCircle2 className="green" size={20} />
-                  <span>High demand in the job market</span>
-                </li>
-                <li>
-                  <CheckCircle2 className="green" size={20} />
-                  <span>Essential for building scalable applications</span>
-                </li>
-              </ul>
-            </section>
+            {techContent.overview.importance && (
+              <section className="overview-section">
+                <h3>{techContent.overview.importance.title}</h3>
+                <div className="importance-points">
+                  {techContent.overview.importance.points.map((point, idx) => (
+                    <div key={idx} className="importance-item">
+                      <CheckCircle2 className="point-icon" size={20} />
+                      <div>
+                        <strong>{point.text}</strong>
+                        {point.description && <p>{point.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
-        {activeTab === 'questions' && (
+        {activeTab === 'questions' && techContent?.questions && (
           <div className="questions-content">
-            <div className="empty-state">
-              <Target size={48} />
-              <p>Interview questions for {techData.name} are coming soon!</p>
+            {techContent.questions.map((question, index) => (
+              <QuestionCard key={question.id} question={question} index={index + 1} />
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'resources' && techContent?.resources && (
+          <div className="resources-content">
+            {techContent.resources.officialDocs && (
+              <div className="resource-section">
+                <h3>Official Documentation</h3>
+                <ul>
+                  {techContent.resources.officialDocs.map((doc, idx) => (
+                    <li key={idx}>
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                        <FileText size={16} />
+                        {doc.title}
+                      </a>
+                      {doc.description && <span className="resource-desc">{doc.description}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {techContent.resources.tutorials && (
+              <div className="resource-section">
+                <h3>Tutorials & Guides</h3>
+                <ul>
+                  {techContent.resources.tutorials.map((tutorial, idx) => (
+                    <li key={idx}>
+                      <a href={tutorial.url} target="_blank" rel="noopener noreferrer">
+                        <BookOpen size={16} />
+                        {tutorial.title}
+                      </a>
+                      {tutorial.type && <span className="resource-type">{tutorial.type}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {techContent.resources.videos && (
+              <div className="resource-section">
+                <h3>Video Resources</h3>
+                <ul>
+                  {techContent.resources.videos.map((video, idx) => (
+                    <li key={idx}>
+                      <a href={video.url} target="_blank" rel="noopener noreferrer">
+                        <Play size={16} />
+                        {video.title}
+                      </a>
+                      {video.duration && <span className="resource-duration">{video.duration}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {techContent.resources.practiceLinks && (
+              <div className="resource-section">
+                <h3>Practice Platforms</h3>
+                <ul>
+                  {techContent.resources.practiceLinks.map((link, idx) => (
+                    <li key={idx}>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer">
+                        <Code size={16} />
+                        {link.title}
+                      </a>
+                      {link.description && <span className="resource-desc">{link.description}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'quiz' && (
+          <div className="quiz-content">
+            <div className="quiz-placeholder">
+              <Brain size={48} />
+              <h3>Quiz Mode Coming Soon!</h3>
+              <p>Test your knowledge with interactive quizzes based on the interview questions.</p>
             </div>
           </div>
         )}
@@ -633,78 +663,52 @@ const TechnologyView = ({ technology }) => {
   );
 };
 
-// Main App Component
-const App = () => {
-  const [darkMode, setDarkMode] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [currentView, setCurrentView] = useState('home');
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedTech, setSelectedTech] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [progress, setProgress] = useState({});
-  const [bookmarks, setBookmarks] = useState([]);
-
-  useEffect(() => {
-    const savedProgress = localStorage.getItem('techInterviewProgress');
-    const savedBookmarks = localStorage.getItem('techInterviewBookmarks');
-    if (savedProgress) setProgress(JSON.parse(savedProgress));
-    if (savedBookmarks) setBookmarks(JSON.parse(savedBookmarks));
-  }, []);
-
-  const toggleTheme = () => setDarkMode(!darkMode);
-
-  const navigateTo = (view, category = null, tech = null) => {
-    setCurrentView(view);
-    setSelectedCategory(category);
-    setSelectedTech(tech);
-  };
+// Question Card Component
+const QuestionCard = ({ question, index }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
-      <ProgressContext.Provider value={{ progress, setProgress, bookmarks, setBookmarks }}>
-        <div className={`app-container ${darkMode ? 'dark' : 'light'}`}>
-          <Header 
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-
-          <div className="main-layout">
-            <Sidebar 
-              isOpen={sidebarOpen}
-              currentView={currentView}
-              selectedCategory={selectedCategory}
-              navigateTo={navigateTo}
-            />
-
-            <main className={`main-content ${sidebarOpen ? 'with-sidebar' : ''}`}>
-              <div className="content-wrapper">
-                <Breadcrumb 
-                  currentView={currentView}
-                  selectedCategory={selectedCategory}
-                  selectedTech={selectedTech}
-                  navigateTo={navigateTo}
-                />
-
-                {currentView === 'home' && <HomeDashboard navigateTo={navigateTo} />}
-                {currentView === 'category' && selectedCategory && (
-                  <CategoryView 
-                    category={selectedCategory} 
-                    navigateTo={navigateTo}
-                  />
-                )}
-                {currentView === 'technology' && selectedTech && (
-                  <TechnologyView 
-                    technology={techContent[selectedTech]}
-                  />
-                )}
+    <div className="question-card">
+      <div 
+        className="question-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <h3>{index}. {question.question}</h3>
+        <ChevronDown className={`expand-icon ${isExpanded ? 'expanded' : ''}`} size={20} />
+      </div>
+      
+      {isExpanded && (
+        <div className="question-body">
+          <div className="answer-section">
+            <p>{question.answer}</p>
+            
+            {question.keyPoints && (
+              <div className="key-points-box">
+                <h4>Key Points:</h4>
+                <ul>
+                  {question.keyPoints.map((point, idx) => (
+                    <li key={idx}>{point}</li>
+                  ))}
+                </ul>
               </div>
-            </main>
+            )}
+            
+            {question.example && (
+              <div className="example-box">
+                <h4>Example:</h4>
+                <pre className="code-example">{question.example}</pre>
+              </div>
+            )}
+            
+            {question.note && (
+              <div className="note-box">
+                <strong>Note:</strong> {question.note}
+              </div>
+            )}
           </div>
         </div>
-      </ProgressContext.Provider>
-    </ThemeContext.Provider>
+      )}
+    </div>
   );
 };
 

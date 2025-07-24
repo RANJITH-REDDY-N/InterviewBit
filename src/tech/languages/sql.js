@@ -1,7 +1,7 @@
 export const sqlContent = {
   id: 'sql',
   name: 'SQL',
-  icon: 'Database', // Use string for now; can be replaced with lucide-react icon if needed
+  icon: 'Database',
   difficulty: 'Beginner',
   questionCount: 10,
   overview: {
